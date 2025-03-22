@@ -136,10 +136,10 @@ class CondEmbedderLabel(nn.Module):
 ## Simple MLP for toy examples
 
 class TimeInputMLP(nn.Module, ModelMixin):
-    def __init__(self, dim=2, hidden_dims=(16,128,256,128,16)):
+    def __init__(self, dim=2, hidden_dims=(16,128,256,128,16), cond_dim=0):
         super().__init__()
         layers = []
-        for in_dim, out_dim in pairwise((dim + 2,) + hidden_dims):
+        for in_dim, out_dim in pairwise((dim + 2 + cond_dim,) + hidden_dims):
             layers.extend([nn.Linear(in_dim, out_dim), nn.GELU()])
         layers.append(nn.Linear(hidden_dims[-1], dim))
 
@@ -149,8 +149,11 @@ class TimeInputMLP(nn.Module, ModelMixin):
     def forward(self, x, sigma, cond=None):
         # x     shape: b x dim
         # sigma shape: b x 1 or scalar
-        sigma_embeds = get_sigma_embeds(x.shape[0], sigma.squeeze()) # shape: b x 2
-        nn_input = torch.cat([x, sigma_embeds], dim=1)               # shape: b x (dim + 2)
+        sigma_embeds = get_sigma_embeds(x.shape[0], sigma.squeeze()) # shape: b x 
+        if cond is not None:
+            nn_input = torch.cat([x, sigma_embeds, cond], dim=1) # shape: b x (dim + 2 + D)
+        else:
+            nn_input = torch.cat([x, sigma_embeds], dim=1)               # shape: b x (dim + 2)
         return self.net(nn_input)
 
 
